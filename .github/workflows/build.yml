@@ -1,44 +1,53 @@
-name: Build Pixel 5 Kernel
+name: Build Pixel 5 Kernel (Redbull)
 on:
-  workflow_dispatch: # Allows you to start the build manually
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Kernel Source
         uses: actions/checkout@v4
         with:
+          # We avoid 'submodules: recursive' to prevent the 128 error 
+          # since you already uploaded KernelSU files manually.
           fetch-depth: 1
 
-      - name: Set up Build Environment
+      - name: Install Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential flex bison lz4 libssl-dev libelf-dev binutils-aarch64-linux-gnu git-lfs
+          sudo apt-get install -y bc build-essential flex bison lz4 libssl-dev libelf-dev \
+          binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi python3 git
 
-      - name: Download AOSP Clang
+      - name: Setup AOSP Clang
         run: |
           mkdir -p clang
-          # Using Clang r416183b (Standard for Redbull/Pixel 5)
-          curl -LSs "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b.tar.gz" | tar -xzC clang
+          # Using the +archive/ link to ensure a valid tar.gz is downloaded
+          curl -LO "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b1.tar.gz"
+          tar -xzf clang-r416183b1.tar.gz -C clang
           echo "$(pwd)/clang/bin" >> $GITHUB_PATH
 
       - name: Build Kernel
         run: |
+          # Environment Variables
           export ARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-gnu-
-          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           export CC=clang
           export CLANG_TRIPLE=aarch64-linux-gnu-
+          export CROSS_COMPILE=aarch64-linux-android-
+          export CROSS_COMPILE_ARM32=arm-linux-androideabi-
+          export KBUILD_BUILD_USER=n4k3r0
+          export KBUILD_BUILD_HOST=DStyl3
           
-          # Fix KernelSU Dubious Ownership for the Action Runner
+          # Fix Dubious Ownership for KernelSU directory
           git config --global --add safe.directory $GITHUB_WORKSPACE/KernelSU || true
           
-          # Configuration and Compilation
+          # Configuration - Ensure the name is 'redbull_defconfig' (double 'd')
           make O=out redbull_defconfig
+          
+          # Compilation
           make -j$(nproc --all) O=out
 
-      - name: Upload Kernel Artifacts
+      - name: Upload Kernel Image
         uses: actions/upload-artifact@v4
         with:
           name: Pixel5-Kernel-Build
