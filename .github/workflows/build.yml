@@ -25,23 +25,29 @@ jobs:
 
       - name: Manual KernelSU Integration
         run: |
-          # If drivers/kernelsu is missing or empty, pull it manually
-          if [ ! -f "drivers/kernelsu/Kconfig" ]; then
-            echo "KernelSU missing, pulling source..."
-            rm -rf drivers/kernelsu
-            git clone https://github.com/tiann/KernelSU drivers/kernelsu
+          # 1. Clean up any existing broken links or empty folders
+          rm -rf drivers/kernelsu
+          
+          # 2. Clone the official KernelSU source directly into the drivers folder
+          git clone https://github.com/tiann/KernelSU drivers/kernelsu
+          
+          # 3. Verify it exists for the logs
+          if [ -f "drivers/kernelsu/Kconfig" ]; then
+            echo "KernelSU source successfully integrated."
+          else
+            echo "ERROR: KernelSU source failed to download!"
+            exit 1
           fi
 
       - name: Build Kernel
         run: |
-          # Correcting the paths for Clang and Binutils
           export ARCH=arm64
           export CC=clang
           export CLANG_TRIPLE=aarch64-linux-gnu-
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           
-          # Force the build to use the Clang linker if needed
+          # Use LLVM tools to avoid "ld not found" errors
           export LD=ld.lld
           export AR=llvm-ar
           export NM=llvm-nm
@@ -49,6 +55,10 @@ jobs:
           export OBJDUMP=llvm-objdump
           export STRIP=llvm-strip
 
+          # Ensure we are starting fresh
+          make O=out clean
+          make O=out mrproper
+          
           # Configuration
           make O=out redbull_defconfig
           
