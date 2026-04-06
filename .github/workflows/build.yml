@@ -19,13 +19,11 @@ jobs:
           sudo apt-get install -y bc build-essential flex bison lz4 libssl-dev libelf-dev \
           binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi python3 git
 
-      - name: Setup AOSP Clang
+      - name: Download Clang Toolchain
         run: |
-          mkdir -p clang
-          # Using the +archive/ link to ensure a valid tar.gz is downloaded
-          curl -LO "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b1.tar.gz"
-          tar -xzf clang-r416183b1.tar.gz -C clang
-          echo "$(pwd)/clang/bin" >> $GITHUB_PATH
+          git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth 1 --single-branch -b main ./clang-repo
+          # We point to the specific version folder inside the repo
+          echo "$(pwd)/clang-repo/clang-r416183b/bin" >> $GITHUB_PATH
 
       - name: Build Kernel
         run: |
