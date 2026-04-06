@@ -25,18 +25,11 @@ jobs:
 
       - name: Manual KernelSU Integration
         run: |
-          # 1. Clean up any existing broken links or empty folders
-          rm -rf drivers/kernelsu
-          
-          # 2. Clone the official KernelSU source directly into the drivers folder
-          git clone https://github.com/tiann/KernelSU drivers/kernelsu
-          
-          # 3. Verify it exists for the logs
-          if [ -f "drivers/kernelsu/Kconfig" ]; then
-            echo "KernelSU source successfully integrated."
-          else
-            echo "ERROR: KernelSU source failed to download!"
-            exit 1
+          # If drivers/kernelsu is missing or empty, pull it manually
+          if [ ! -f "drivers/kernelsu/Kconfig" ]; then
+            echo "KernelSU missing, pulling source..."
+            rm -rf drivers/kernelsu
+            git clone https://github.com/tiann/KernelSU drivers/kernelsu
           fi
 
       - name: Build Kernel
