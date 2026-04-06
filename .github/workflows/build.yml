@@ -25,16 +25,20 @@ jobs:
 
       - name: Debug and Integrate KernelSU
         run: |
-          # 1. Clean up and Clone
+          # 1. Clean up and Clone the repo to a temporary location
           rm -rf drivers/kernelsu
-          git clone https://github.com/tiann/KernelSU drivers/kernelsu
+          git clone https://github.com/tiann/KernelSU drivers/ksu_tmp
           
-          # 2. DEBUG: Show us what is actually in the drivers folder
-          echo "Checking drivers directory structure:"
-          ls -d drivers/*/ | grep kernelsu || echo "kernelsu folder not found!"
-          ls drivers/kernelsu/Kconfig || echo "Kconfig NOT FOUND in drivers/kernelsu/"
+          # 2. Move the ACTUAL driver files to the drivers/kernelsu folder
+          mkdir -p drivers/kernelsu
+          cp -r drivers/ksu_tmp/kernel/* drivers/kernelsu/
+          rm -rf drivers/ksu_tmp
           
-          # 3. Patch drivers/Kconfig if it's missing the link (Safety measure)
+          # 3. DEBUG: Verify the Kconfig is now exactly where it belongs
+          echo "Checking for Kconfig at drivers/kernelsu/Kconfig:"
+          ls -l drivers/kernelsu/Kconfig || (echo "STILL NOT FOUND" && exit 1)
+          
+          # 4. Patch drivers/Kconfig if it's missing the link
           if ! grep -q "kernelsu" drivers/Kconfig; then
             echo 'source "drivers/kernelsu/Kconfig"' >> drivers/Kconfig
           fi
