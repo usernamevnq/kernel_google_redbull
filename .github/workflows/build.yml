@@ -23,20 +23,32 @@ jobs:
           # We point to the specific version folder inside the repo
           echo "$(pwd)/clang-repo/clang-r416183b/bin" >> $GITHUB_PATH
 
-      - name: Integrate KernelSU and Build
+      - name: Debug and Integrate KernelSU
         run: |
-          # 1. Force Integrate KernelSU
+          # 1. Clean up and Clone
           rm -rf drivers/kernelsu
           git clone https://github.com/tiann/KernelSU drivers/kernelsu
           
-          # 2. Set Environment Variables
+          # 2. DEBUG: Show us what is actually in the drivers folder
+          echo "Checking drivers directory structure:"
+          ls -d drivers/*/ | grep kernelsu || echo "kernelsu folder not found!"
+          ls drivers/kernelsu/Kconfig || echo "Kconfig NOT FOUND in drivers/kernelsu/"
+          
+          # 3. Patch drivers/Kconfig if it's missing the link (Safety measure)
+          if ! grep -q "kernelsu" drivers/Kconfig; then
+            echo 'source "drivers/kernelsu/Kconfig"' >> drivers/Kconfig
+          fi
+
+      - name: Build Kernel
+        run: |
+          # Set Paths
           export ARCH=arm64
           export CC=clang
           export CLANG_TRIPLE=aarch64-linux-gnu-
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           
-          # Use LLVM tools provided by Clang
+          # Force the use of LLVM tools
           export LD=ld.lld
           export AR=llvm-ar
           export NM=llvm-nm
@@ -44,16 +56,14 @@ jobs:
           export OBJDUMP=llvm-objdump
           export STRIP=llvm-strip
 
-          # 3. Clean and Configure
+          # Clean the 'out' directory
           mkdir -p out
-          make O=out clean
-          make O=out mrproper
           
-          # 4. Generate Config
-          make O=out redbull_defconfig
+          # Configuration
+          make O=out ARCH=arm64 redbull_defconfig
           
-          # 5. Compile
-          make -j$(nproc --all) O=out
+          # Compilation
+          make -j$(nproc --all) O=out ARCH=arm64
 
       - name: Upload Kernel Image
         uses: actions/upload-artifact@v4
