@@ -1,3 +1,9 @@
+KERNEL_SOURCE: https://github.com/PixelExperience-Devices/kernel_google_redbull
+KERNEL_SOURCE_BRANCH: fourteen
+KERNEL_CONFIG: redbull_defconfig
+
+# Use a direct link to your firmware's boot.img
+SOURCE_BOOT_IMAGE: stock_boot.img
 name: Build Pixel 5 Kernel
 on:
   workflow_dispatch: # Allows you to start the build manually
@@ -9,7 +15,6 @@ jobs:
       - name: Checkout Kernel Source
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive' # Required for KernelSU
           fetch-depth: 1
 
       - name: Set up Build Environment
