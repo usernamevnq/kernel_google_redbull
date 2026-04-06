@@ -23,24 +23,20 @@ jobs:
           # We point to the specific version folder inside the repo
           echo "$(pwd)/clang-repo/clang-r416183b/bin" >> $GITHUB_PATH
 
-      - name: Manual KernelSU Integration
+      - name: Integrate KernelSU and Build
         run: |
-          # If drivers/kernelsu is missing or empty, pull it manually
-          if [ ! -f "drivers/kernelsu/Kconfig" ]; then
-            echo "KernelSU missing, pulling source..."
-            rm -rf drivers/kernelsu
-            git clone https://github.com/tiann/KernelSU drivers/kernelsu
-          fi
-
-      - name: Build Kernel
-        run: |
+          # 1. Force Integrate KernelSU
+          rm -rf drivers/kernelsu
+          git clone https://github.com/tiann/KernelSU drivers/kernelsu
+          
+          # 2. Set Environment Variables
           export ARCH=arm64
           export CC=clang
           export CLANG_TRIPLE=aarch64-linux-gnu-
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           
-          # Use LLVM tools to avoid "ld not found" errors
+          # Use LLVM tools provided by Clang
           export LD=ld.lld
           export AR=llvm-ar
           export NM=llvm-nm
@@ -48,14 +44,15 @@ jobs:
           export OBJDUMP=llvm-objdump
           export STRIP=llvm-strip
 
-          # Ensure we are starting fresh
+          # 3. Clean and Configure
+          mkdir -p out
           make O=out clean
           make O=out mrproper
           
-          # Configuration
+          # 4. Generate Config
           make O=out redbull_defconfig
           
-          # Compilation
+          # 5. Compile
           make -j$(nproc --all) O=out
 
       - name: Upload Kernel Image
