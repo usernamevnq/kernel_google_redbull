@@ -17,10 +17,11 @@ jobs:
           sudo apt-get install -y bc build-essential flex bison lz4 libssl-dev libelf-dev \
           binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi python3 git
 
-      - name: Setup Clang
-        uses: radioactive-pigeon/setup-clang-aosp@master
-        with:
-          clang-version: 'r416183b'
+      - name: Download Clang Toolchain
+        run: |
+          git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth 1 --single-branch -b main ./clang-repo
+          # We point to the specific version folder inside the repo
+          echo "$(pwd)/clang-repo/clang-r416183b/bin" >> $GITHUB_PATH
 
       - name: Manual KernelSU Integration
         run: |
