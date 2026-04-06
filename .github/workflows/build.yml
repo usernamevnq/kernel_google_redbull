@@ -9,8 +9,6 @@ jobs:
       - name: Checkout Kernel Source
         uses: actions/checkout@v4
         with:
-          # We avoid 'submodules: recursive' to prevent the 128 error 
-          # since you already uploaded KernelSU files manually.
           fetch-depth: 1
 
       - name: Install Build Dependencies
@@ -19,27 +17,38 @@ jobs:
           sudo apt-get install -y bc build-essential flex bison lz4 libssl-dev libelf-dev \
           binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi python3 git
 
-      - name: Download Clang Toolchain
+      - name: Setup Clang
+        uses: radioactive-pigeon/setup-clang-aosp@master
+        with:
+          clang-version: 'r416183b'
+
+      - name: Manual KernelSU Integration
         run: |
-          git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth 1 --single-branch -b main ./clang-repo
-          # We point to the specific version folder inside the repo
-          echo "$(pwd)/clang-repo/clang-r416183b/bin" >> $GITHUB_PATH
+          # If drivers/kernelsu is missing or empty, pull it manually
+          if [ ! -f "drivers/kernelsu/Kconfig" ]; then
+            echo "KernelSU missing, pulling source..."
+            rm -rf drivers/kernelsu
+            git clone https://github.com/tiann/KernelSU drivers/kernelsu
+          fi
 
       - name: Build Kernel
         run: |
-          # Environment Variables
+          # Correcting the paths for Clang and Binutils
           export ARCH=arm64
           export CC=clang
           export CLANG_TRIPLE=aarch64-linux-gnu-
-          export CROSS_COMPILE=aarch64-linux-android-
-          export CROSS_COMPILE_ARM32=arm-linux-androideabi-
-          export KBUILD_BUILD_USER=n4k3r0
-          export KBUILD_BUILD_HOST=DStyl3
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           
-          # Fix Dubious Ownership for KernelSU directory
-          git config --global --add safe.directory $GITHUB_WORKSPACE/KernelSU || true
-          
-          # Configuration - Ensure the name is 'redbull_defconfig' (double 'd')
+          # Force the build to use the Clang linker if needed
+          export LD=ld.lld
+          export AR=llvm-ar
+          export NM=llvm-nm
+          export OBJCOPY=llvm-objcopy
+          export OBJDUMP=llvm-objdump
+          export STRIP=llvm-strip
+
+          # Configuration
           make O=out redbull_defconfig
           
           # Compilation
